@@ -1,1 +1,0 @@
-#WindowsUpdate #WannaCrypt Tool displays info installed updates & searches MSCatalog for superseded info,DM4source http://bit.ly/2r5QLnI 
