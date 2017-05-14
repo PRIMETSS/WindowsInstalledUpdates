@@ -10,9 +10,15 @@ namespace MSHWindowsUpdateAgent
 {
     class Program
     {
+        private static bool SuppressCursorControl = false;
+
         static void Main(string[] args)
         {
             Console.WriteLine($"PrimeTSS WindowsInstalledUpdates Version [{typeof(Program).Assembly.GetName().Version}]");
+
+            // Check for possible piping to file
+            if (args.Count() > 0)
+                SuppressCursorControl = true;
 
             EnableUpdateServices();
 
@@ -31,31 +37,31 @@ namespace MSHWindowsUpdateAgent
             IUpdateSearcher UpdateSearchResult = UpdateSession.CreateUpdateSearcher();
             UpdateSearchResult.Online = true;//checks for updates online
             ISearchResult SearchResults = UpdateSearchResult.Search("IsInstalled=1 AND IsHidden=0");
-            
-            
+
+
             Console.WriteLine("The following updates are installed");
 
+            // Convert ISearchResult collection to list
             List<IUpdate5> resultIUpdateList = new List<IUpdate5>();
             foreach (IUpdate5 x in SearchResults.Updates)
                 resultIUpdateList.Add(x);
 
-
+            // Display Update info to terminal
             foreach (IUpdate5 x in resultIUpdateList.OrderByDescending(o => o.LastDeploymentChangeTime))
             {
+                // Update General Info
                 Console.WriteLine($"\nTitle: [{x.Title}], Installed: [{x.IsInstalled}]");
                 if (0 != x.KBArticleIDs.Count)
-                {
                     foreach (var kbids in x.KBArticleIDs)
                         Console.WriteLine($"  KB {kbids}");
-                }
-                // Superceeds
+
+                // Superceeded Updates
                 if (0 != x.SupersededUpdateIDs.Count)
                 {
                     MSCatalogHelper MSCatalog = new MSCatalogHelper();
 
                     foreach (var ssids in x.SupersededUpdateIDs)
                     {
-                        
                         Console.Write($"    SupersededUpdateID: [{ssids}] (Doing MSCatalog search...)\r");
                         string result = MSCatalog.SearchMSCatalogue(ssids.ToString());
                         ClearCurrentConsoleLine();
@@ -63,37 +69,31 @@ namespace MSHWindowsUpdateAgent
                     }
                 }
 
-                // Cve
+                // Cve Common Vulnerabilities & Exposures
+                // https://cve.mitre.org/
                 if (0 != x.CveIDs.Count)
-                {
                     foreach (var cveid in x.CveIDs)
-                    {
                         Console.WriteLine($"    CveID: [{cveid}]");
-                    }
-                }
 
-                // Cve
+                // Security Bulletins
                 if (0 != x.SecurityBulletinIDs.Count)
-                {
                     foreach (var sbids in x.SecurityBulletinIDs)
-                    {
                         Console.WriteLine($"    Security BulletinsID: [{sbids}]");
-                    }
-                }
 
-                // Bundled
+                // Bundled Updates
                 if (x.BundledUpdates.Count > 0)
-                {
                     foreach (IUpdate bu in x.BundledUpdates)
                     {
                         Console.WriteLine($"    BundledUpdate: Title: [{bu.Title}], Installed: [{bu.IsInstalled}]");
                         foreach (var kbids in bu.KBArticleIDs)
                             Console.WriteLine($"      KB {kbids}");
                     }
-                }
             }
         }
 
+        /// <summary>
+        /// Check for Windows Update Service running
+        /// </summary>
         public static void EnableUpdateServices()
         {
             Console.WriteLine("Checking Windows Update Service is running");
@@ -111,14 +111,19 @@ namespace MSHWindowsUpdateAgent
 
         }
 
-        public static string ClearCurrentConsoleLine()
+        /// <summary>
+        /// Overwrite line for readability
+        /// Causes System.IO.IOException 'invalid file handle' when piped to file, so disable if piping
+        /// </summary>
+        public static void ClearCurrentConsoleLine()
         {
-            int currentLineCursor = Console.CursorTop;
-            Console.SetCursorPosition(0, Console.CursorTop);
-            Console.Write(new string(' ', Console.WindowWidth));
-            Console.SetCursorPosition(0, currentLineCursor);
-
-            return null;
+            if (!SuppressCursorControl)
+            {
+                int currentLineCursor = Console.CursorTop;
+                Console.SetCursorPosition(0, Console.CursorTop);
+                Console.Write(new string(' ', Console.WindowWidth));
+                Console.SetCursorPosition(0, currentLineCursor);
+            }
         }
 
         /// <summary>
