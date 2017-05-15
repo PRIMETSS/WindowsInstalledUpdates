@@ -28,7 +28,9 @@ namespace MSHWindowsUpdateAgent
             InstalledUpdates();
 
             Console.WriteLine("\nFinished");
-            Console.Read();
+
+            if (!SuppressCursorControl)
+                Console.Read();
         }
 
         public static void InstalledUpdates()
